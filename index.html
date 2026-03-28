@@ -147,7 +147,7 @@
     <div class="ctrl-row-content">
       <div class="slider-group">
         <span>few</span>
-        <input type="range" id="robot-count" min="10" max="500" value="120" oninput="updateRobotLabel()">
+        <input type="range" id="robot-count" min="10" max="200" value="120" oninput="updateRobotLabel()">
         <span>many</span>
         <span class="slider-val" id="robot-label">120</span>
       </div>
@@ -466,6 +466,17 @@ class Simulation {
     }
   }
 
+  _hasLineOfSight(a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const steps = Math.ceil(dist / 0.5); // sample every 0.5m
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      if (this._isWall(a.x + dx * t, a.y + dy * t)) return false;
+    }
+    return true;
+  }
+
   _buildOverlay() {
     const lines = [];
     const r2 = NEIGHBOR_R * NEIGHBOR_R;
@@ -486,7 +497,7 @@ class Simulation {
             if (seen.has(pairKey)) continue;
             seen.add(pairKey);
             const ex = other.x - robot.x, ey = other.y - robot.y;
-            if (ex * ex + ey * ey <= r2) lines.push([robot, other]);
+            if (ex * ex + ey * ey <= r2 && this._hasLineOfSight(robot, other)) lines.push([robot, other]);
           }
         }
       }
