@@ -137,8 +137,7 @@
     <div class="ctrl-row-content">
       <div class="btn-group">
         <button id="btn-simple" class="active" onclick="setComplexity('simple')">Simple</button>
-        <button id="btn-medium" onclick="setComplexity('medium')">Medium</button>
-        <button id="btn-complex" onclick="setComplexity('complex')">Complex</button>
+        <button id="btn-medium" onclick="setComplexity('medium')">Complex</button>
       </div>
     </div>
   </div>
@@ -591,7 +590,7 @@ class Simulation {
 const sim = new Simulation(document.getElementById('maze'));
 
 function setComplexity(c) {
-  ['simple','medium','complex'].forEach(id => {
+  ['simple','medium'].forEach(id => {
     document.getElementById('btn-' + id).classList.toggle('active', id === c);
   });
   sim.setComplexity(c);
