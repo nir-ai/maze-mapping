@@ -196,7 +196,7 @@ const PX_PER_M    = CANVAS_SIZE / WORLD_SIZE;  // 7
 const STEP        = 0.01;       // meters per robot step (1 cm)
 const STOP_DIST   = 5.0;        // meters — stop when nearest neighbor > this
 const STOP_DIST2  = STOP_DIST * STOP_DIST;
-const NEIGHBOR_R  = 6.0;        // meters — overlay line threshold
+const NEIGHBOR_R  = 10.0;       // meters — overlay line threshold
 
 const COMPLEXITY = {
   simple:  { rooms: 3, maxRobots: 50 },
@@ -319,6 +319,7 @@ class Simulation {
     this.rafId  = null;
     this.overlayDrawn = false;
     this.overlayLines = [];
+    this.mapRevealUntil = 0;
     this.running = false;
     this.paused  = true;
   }
@@ -505,13 +506,17 @@ class Simulation {
     }
 
     const allPositioned = this.robots.every(r => r.stopped);
-    if (allPositioned && !this.overlayDrawn) this._buildOverlay();
+    if (allPositioned && !this.overlayDrawn) {
+      this._buildOverlay();
+      this.mapRevealUntil = Date.now() + 2000;
+    }
     if (!allPositioned && this.overlayDrawn) {
       this.overlayDrawn = false;
       this.overlayLines = [];
     }
 
-    this._render(allPositioned);
+    const showMap = this.overlayDrawn && Date.now() < this.mapRevealUntil;
+    this._render(showMap);
     this._updateStatus();
 
     if (!this.paused) {
@@ -528,51 +533,63 @@ class Simulation {
 
     ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-    // Draw maze
-    for (let row = 0; row < N; row++) {
-      for (let col = 0; col < N; col++) {
-        const px = col * cellSize * S;
-        const py = row * cellSize * S;
-        const pw = cellSize * S;
-        if (!grid[row][col]) {
-          ctx.fillStyle = '#2a2a2a';
-          ctx.fillRect(px, py, pw + 0.5, pw + 0.5);
-        } else {
-          ctx.fillStyle = '#f5f0e8';
-          ctx.fillRect(px, py, pw + 0.5, pw + 0.5);
-        }
-      }
-    }
+    if (allStopped) {
+      // Map view: black background, no maze
+      ctx.fillStyle = '#111';
+      ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-    // Entrance marker
-    const { entranceY } = this.maze;
-    ctx.fillStyle = '#4dff88';
-    ctx.fillRect(0, (entranceY / WORLD_SIZE) * CANVAS_SIZE - 4, 6, 8);
-
-    // Map overlay lines
-    if (this.overlayDrawn && this.overlayLines.length) {
-      ctx.strokeStyle = 'rgba(80,200,255,0.35)';
-      ctx.lineWidth = 1;
+      // Bold overlay lines
+      ctx.strokeStyle = '#00d4ff';
+      ctx.lineWidth = 3;
       ctx.beginPath();
       for (const [a, b] of this.overlayLines) {
         ctx.moveTo(a.x * S, a.y * S);
         ctx.lineTo(b.x * S, b.y * S);
       }
       ctx.stroke();
-    }
 
-    // Robots
-    for (const robot of this.robots) {
-      const px = robot.x * S, py = robot.y * S;
-      if (robot.stopped) {
+      // Red dots on top
+      for (const robot of this.robots) {
         ctx.fillStyle = '#ff6b35';
         ctx.beginPath();
-        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.arc(robot.x * S, robot.y * S, 5, 0, Math.PI * 2);
         ctx.fill();
-      } else {
-        ctx.fillStyle = '#4488ff';
+      }
+    } else {
+      // Simulation view: draw maze
+      for (let row = 0; row < N; row++) {
+        for (let col = 0; col < N; col++) {
+          const px = col * cellSize * S;
+          const py = row * cellSize * S;
+          const pw = cellSize * S;
+          ctx.fillStyle = grid[row][col] ? '#f5f0e8' : '#2a2a2a';
+          ctx.fillRect(px, py, pw + 0.5, pw + 0.5);
+        }
+      }
+
+      // Entrance marker
+      const { entranceY } = this.maze;
+      ctx.fillStyle = '#4dff88';
+      ctx.fillRect(0, (entranceY / WORLD_SIZE) * CANVAS_SIZE - 4, 6, 8);
+
+      // Overlay lines (persist after reveal)
+      if (this.overlayDrawn && this.overlayLines.length) {
+        ctx.strokeStyle = '#00d4ff';
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(px, py, 4, 0, Math.PI * 2);
+        for (const [a, b] of this.overlayLines) {
+          ctx.moveTo(a.x * S, a.y * S);
+          ctx.lineTo(b.x * S, b.y * S);
+        }
+        ctx.stroke();
+      }
+
+      // Robots
+      for (const robot of this.robots) {
+        const px = robot.x * S, py = robot.y * S;
+        ctx.fillStyle = robot.stopped ? '#ff6b35' : '#4488ff';
+        ctx.beginPath();
+        ctx.arc(px, py, robot.stopped ? 5 : 4, 0, Math.PI * 2);
         ctx.fill();
       }
     }
