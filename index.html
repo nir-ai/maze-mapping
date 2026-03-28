@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הפטריה שפותרת מבוך — Maze Mapper</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 12px;
+  }
+  h1 {
+    font-size: 1.4rem;
+    color: #f0c040;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  h1 span { font-size: 1rem; color: #aaa; margin-left: 6px; }
+  .panel {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+    width: 100%;
+    max-width: 700px;
+  }
+  .ctrl-row {
+    display: grid;
+    grid-template-columns: 68px 1fr;
+    align-items: center;
+    gap: 10px;
+    background: #22223a;
+    border-radius: 8px;
+    padding: 8px 12px;
+    min-height: 58px;
+  }
+  .ctrl-row-content {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .row-label {
+    font-size: 0.72rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  button {
+    padding: 10px 18px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: #2a2a4a;
+    color: #ddd;
+    cursor: pointer;
+    font-size: 0.9rem;
+    touch-action: manipulation;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  button:hover { background: #3a3a6a; border-color: #666; }
+  button.active { background: #f0c040; color: #1a1a2e; border-color: #f0c040; font-weight: bold; }
+  button.action { background: #2a4a2a; border-color: #4a8a4a; color: #8fd88f; }
+  button.action:hover { background: #3a6a3a; }
+  .slider-group { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #aaa; flex-wrap: nowrap; }
+  .slider-val { color: #f0c040; font-weight: bold; min-width: 38px; }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 110px;
+    height: 6px;
+    background: #444;
+    border-radius: 3px;
+    outline: none;
+    touch-action: manipulation;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #f0c040;
+    cursor: pointer;
+  }
+  canvas {
+    border: 2px solid #333;
+    border-radius: 4px;
+    display: block;
+    background: #111;
+    width: 100%;
+    max-width: 700px;
+    height: auto;
+    touch-action: none;
+  }
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+  }
+  .legend-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .legend-dot.blue { background: #4488ff; }
+  .legend-dot.red  { background: #ff6b35; }
+  .leg-label { color: #aaa; }
+  .leg-count { color: #f0c040; font-weight: bold; min-width: 28px; }
+  .leg-sep { width: 1px; height: 18px; background: #444; margin: 0 4px; }
+
+  @media (max-width: 480px) {
+    body { padding: 8px; }
+    h1 { font-size: 1.1rem; }
+    h1 span { display: none; }
+    .row-label { width: 52px; font-size: 0.65rem; }
+    button { padding: 10px 12px; font-size: 0.82rem; }
+    input[type=range] { width: 90px; }
+    .slider-group { gap: 5px; font-size: 0.75rem; }
+    .slider-group[style] { margin-left: 0 !important; }
+    .ctrl-row { gap: 8px; grid-template-columns: 52px 1fr; }
+  }
+</style>
+</head>
+<body>
+<h1>הפטריה שפותרת מבוך <span>— Maze Mapper</span></h1>
+
+<div class="panel">
+  <!-- Row 1: Maze complexity -->
+  <div class="ctrl-row">
+    <span class="row-label">Maze</span>
+    <div class="ctrl-row-content">
+      <div class="btn-group">
+        <button id="btn-simple" class="active" onclick="setComplexity('simple')">Simple</button>
+        <button id="btn-medium" onclick="setComplexity('medium')">Medium</button>
+        <button id="btn-complex" onclick="setComplexity('complex')">Complex</button>
+      </div>
+    </div>
+  </div>
+  <!-- Row 2: Robots count + Speed -->
+  <div class="ctrl-row">
+    <span class="row-label">Robots</span>
+    <div class="ctrl-row-content">
+      <div class="slider-group">
+        <span>few</span>
+        <input type="range" id="robot-count" min="10" max="500" value="50" oninput="updateRobotLabel()">
+        <span>many</span>
+        <span class="slider-val" id="robot-label">50</span>
+      </div>
+      <div class="slider-group">
+        <span>slow</span>
+        <input type="range" id="speed" min="100" max="1000" value="100" oninput="updateSpeedLabel()">
+        <span>fast</span>
+        <span class="slider-val" id="speed-label">100×</span>
+      </div>
+    </div>
+  </div>
+  <!-- Row 3: Actions -->
+  <div class="ctrl-row">
+    <span class="row-label">Actions</span>
+    <div class="ctrl-row-content">
+      <div class="btn-group">
+        <button class="action" id="btn-startpause" onclick="sim.toggleStartPause()">▶ Start</button>
+        <button class="action" onclick="sim.restart()">✕ Clear</button>
+      </div>
+    </div>
+  </div>
+  <!-- Row 4: Legend -->
+  <div class="ctrl-row">
+    <span class="row-label">Legend</span>
+    <div class="ctrl-row-content">
+      <div class="legend-row">
+        <div class="legend-dot blue"></div>
+        <span class="leg-label">Moving</span>
+        <span class="leg-count" id="count-moving">0</span>
+        <div class="leg-sep"></div>
+        <div class="legend-dot red"></div>
+        <span class="leg-label">Positioned</span>
+        <span class="leg-count" id="count-positioned">0</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<canvas id="maze" width="700" height="700"></canvas>
+
+<script>
+// ─── Constants ───────────────────────────────────────────────────────────────
+const CANVAS_SIZE = 700;
+const WORLD_SIZE  = 100;        // meters
+const PX_PER_M    = CANVAS_SIZE / WORLD_SIZE;  // 7
+const STEP        = 0.01;       // meters per robot step (1 cm)
+const STOP_DIST   = 5.0;        // meters — stop when nearest neighbor > this
+const STOP_DIST2  = STOP_DIST * STOP_DIST;
+const NEIGHBOR_R  = 6.0;        // meters — overlay line threshold
+
+const COMPLEXITY = {
+  simple:  { rooms: 3, maxRobots: 50 },
+  medium:  { rooms: 5, maxRobots: 100 },
+  complex: { rooms: 9, maxRobots: 200 },
+};
+
+// ─── Maze Generator (recursive backtracking) ─────────────────────────────────
+class MazeGenerator {
+  // Returns { grid: boolean[][], cellSize: number, entranceX: number, entranceY: number }
+  // grid[row][col] = true if passable
+  generate(rooms) {
+    const N = rooms * 2 + 1; // grid dimension in cells
+    const grid = Array.from({length: N}, () => new Array(N).fill(false));
+
+    // DFS
+    const visited = Array.from({length: rooms}, () => new Array(rooms).fill(false));
+    const stack = [];
+    const startR = 0, startC = 0;
+    visited[startR][startC] = true;
+    stack.push([startR, startC]);
+    grid[startR * 2 + 1][startC * 2 + 1] = true;
+
+    const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+    while (stack.length) {
+      const [r, c] = stack[stack.length - 1];
+      const shuffled = dirs.slice().sort(() => Math.random() - 0.5);
+      let moved = false;
+      for (const [dr, dc] of shuffled) {
+        const nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < rooms && nc >= 0 && nc < rooms && !visited[nr][nc]) {
+          visited[nr][nc] = true;
+          // carve passage
+          grid[r * 2 + 1][c * 2 + 1] = true;
+          grid[nr * 2 + 1][nc * 2 + 1] = true;
+          grid[r * 2 + 1 + dr][c * 2 + 1 + dc] = true;
+          stack.push([nr, nc]);
+          moved = true;
+          break;
+        }
+      }
+      if (!moved) stack.pop();
+    }
+
+    // cellSize in meters: world is 100m, grid is N cells
+    const cellSize = WORLD_SIZE / N;
+
+    // Entrance: open left wall of the middle-height room
+    const midRoom = Math.floor(rooms / 2);
+    const entranceRow = midRoom * 2 + 1;
+    grid[entranceRow][0] = true; // border cell — open entrance
+    const entranceX = 0;
+    const entranceY = (entranceRow + 0.5) * cellSize;
+
+    return { grid, N, cellSize, entranceX, entranceY };
+  }
+}
+
+// ─── Spatial Grid ─────────────────────────────────────────────────────────────
+class SpatialGrid {
+  constructor(worldSize, cellSize) {
+    this.cell = cellSize;
+    this.cols = Math.ceil(worldSize / cellSize) + 1;
+    this.rows = Math.ceil(worldSize / cellSize) + 1;
+    this.cells = new Map();
+  }
+  _key(cx, cy) { return cy * this.cols + cx; }
+  _cell(x, y)  { return [Math.floor(x / this.cell), Math.floor(y / this.cell)]; }
+  clear() { this.cells.clear(); }
+  add(robot) {
+    const [cx, cy] = this._cell(robot.x, robot.y);
+    const k = this._key(cx, cy);
+    if (!this.cells.has(k)) this.cells.set(k, []);
+    this.cells.get(k).push(robot);
+  }
+  // Returns true if any OTHER robot (not self) is within maxDist meters
+  hasNeighborWithin(robot, maxDist) {
+    const [cx, cy] = this._cell(robot.x, robot.y);
+    const r = Math.ceil(maxDist / this.cell);
+    const d2 = maxDist * maxDist;
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        const k = this._key(cx + dx, cy + dy);
+        const bucket = this.cells.get(k);
+        if (!bucket) continue;
+        for (const other of bucket) {
+          if (other === robot) continue;
+          const ex = other.x - robot.x, ey = other.y - robot.y;
+          if (ex * ex + ey * ey <= d2) return true;
+        }
+      }
+    }
+    return false;
+  }
+}
+
+// ─── Robot ────────────────────────────────────────────────────────────────────
+class Robot {
+  constructor(x, y, id) {
+    this.id = id;
+    this.x = x;
+    this.y = y;
+    this.angle = Math.random() * Math.PI * 2;
+    this.stopped = false;
+    this.pauseTimer = 0;
+    this.pauseDuration = 2;
+    this.stepCount = 0;
+  }
+}
+
+// ─── Simulation ───────────────────────────────────────────────────────────────
+class Simulation {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx    = canvas.getContext('2d');
+    this.complexity = 'simple';
+    this.maze   = null;
+    this.robots = [];
+    this.grid   = null;
+    this.rafId  = null;
+    this.overlayDrawn = false;
+    this.overlayLines = [];
+    this.running = false;
+    this.paused  = true;
+  }
+
+  setComplexity(c) {
+    this.complexity = c;
+    this.newMaze();
+  }
+
+  newMaze() {
+    this._stop();
+    const { rooms } = COMPLEXITY[this.complexity];
+    const robotCount = parseInt(document.getElementById('robot-count').value, 10);
+    const gen = new MazeGenerator();
+    this.maze = gen.generate(rooms);
+    this._spawnRobots(robotCount);
+    this.overlayDrawn = false;
+    this.overlayLines = [];
+    this.paused = true;
+    this._updateStartPauseBtn();
+    this._render(false);
+    this._updateStatus();
+  }
+
+  restart() {
+    if (!this.maze) return;
+    this._stop();
+    const robotCount = parseInt(document.getElementById('robot-count').value, 10);
+    this._spawnRobots(robotCount);
+    this.overlayDrawn = false;
+    this.overlayLines = [];
+    this.paused = true;
+    this._updateStartPauseBtn();
+    this._render(false);
+    this._updateStatus();
+  }
+
+  toggleStartPause() {
+    if (!this.maze) return;
+    if (this.paused) {
+      this.paused = false;
+      this.running = true;
+      this._loop();
+    } else {
+      this.paused = true;
+      this.running = false;
+      if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
+    }
+    this._updateStartPauseBtn();
+  }
+
+  _updateStartPauseBtn() {
+    const btn = document.getElementById('btn-startpause');
+    btn.textContent = this.paused ? '▶ Start' : '⏸ Pause';
+  }
+
+  _stop() {
+    this.running = false;
+    this.paused = true;
+    if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
+  }
+
+  _spawnRobots(count) {
+    const { cellSize, entranceX, entranceY } = this.maze;
+    this.robots = [];
+    const ex = entranceX + cellSize * 0.5; // center of entrance passage
+    const ey = entranceY;
+    for (let i = 0; i < count; i++) {
+      // small random offset so they don't all overlap perfectly
+      const ox = (Math.random() - 0.5) * 0.1;
+      const oy = (Math.random() - 0.5) * 0.1;
+      this.robots.push(new Robot(ex + ox, ey + oy, i));
+    }
+
+    // Build spatial grid (1m cells)
+    this.spatialGrid = new SpatialGrid(WORLD_SIZE, 1.0);
+    this._rebuildSpatial();
+  }
+
+  _rebuildSpatial() {
+    this.spatialGrid.clear();
+    for (const r of this.robots) this.spatialGrid.add(r);
+  }
+
+  _isWall(x, y) {
+    const { grid, N, cellSize } = this.maze;
+    const col = Math.floor(x / cellSize);
+    const row = Math.floor(y / cellSize);
+    if (col < 0 || col >= N || row < 0 || row >= N) return true;
+    return !grid[row][col];
+  }
+
+  _stepRobot(robot) {
+    if (robot.stopped) {
+      robot.pauseTimer--;
+      if (robot.pauseTimer <= 0) {
+        // Recheck: resume if a neighbour is now within range, else double the wait
+        if (this.spatialGrid.hasNeighborWithin(robot, STOP_DIST)) {
+          robot.stopped = false;
+          robot.pauseDuration = 2; // reset backoff on resume
+        } else {
+          robot.pauseDuration *= 2;
+          robot.pauseTimer = robot.pauseDuration;
+        }
+      }
+      return;
+    }
+    // Adjust direction every 10m by up to ±50 degrees
+    if (robot.stepCount % 1000 === 0) {
+      const maxTurn = 50 * Math.PI / 180;
+      robot.angle += (Math.random() * 2 - 1) * maxTurn;
+    }
+    robot.stepCount++;
+    const dx = Math.cos(robot.angle) * STEP;
+    const dy = Math.sin(robot.angle) * STEP;
+    const nx = robot.x + dx, ny = robot.y + dy;
+
+    if (!this._isWall(nx, ny)) {
+      robot.x = nx; robot.y = ny;
+    } else {
+      // Slide along wall: project original direction onto whichever axis is free.
+      // Prefer the axis with the larger component (closer to original direction).
+      const tryX = !this._isWall(robot.x + dx, robot.y);
+      const tryY = !this._isWall(robot.x, robot.y + dy);
+      if (tryX && tryY) {
+        // Both axes free — take the dominant one
+        if (Math.abs(dx) >= Math.abs(dy)) { robot.x += dx; }
+        else                               { robot.y += dy; }
+      } else if (tryX) { robot.x += dx; }
+      else if (tryY)   { robot.y += dy; }
+      // else fully cornered — stay put
+    }
+
+    // Clamp to world
+    robot.x = Math.max(0, Math.min(WORLD_SIZE - 0.01, robot.x));
+    robot.y = Math.max(0, Math.min(WORLD_SIZE - 0.01, robot.y));
+  }
+
+  _checkStop(robot) {
+    if (robot.stopped) return;
+    if (!this.spatialGrid.hasNeighborWithin(robot, STOP_DIST)) {
+      robot.stopped = true;
+      robot.pauseTimer = robot.pauseDuration;
+    }
+  }
+
+  _buildOverlay() {
+    const lines = [];
+    const r2 = NEIGHBOR_R * NEIGHBOR_R;
+    const seen = new Set();
+    for (const robot of this.robots) {
+      const [cx, cy] = this.spatialGrid._cell(robot.x, robot.y);
+      const r = Math.ceil(NEIGHBOR_R / this.spatialGrid.cell);
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          const k = this.spatialGrid._key(cx + dx, cy + dy);
+          const bucket = this.spatialGrid.cells.get(k);
+          if (!bucket) continue;
+          for (const other of bucket) {
+            if (other === robot) continue;
+            const pairKey = robot.id < other.id
+              ? `${robot.id},${other.id}`
+              : `${other.id},${robot.id}`;
+            if (seen.has(pairKey)) continue;
+            seen.add(pairKey);
+            const ex = other.x - robot.x, ey = other.y - robot.y;
+            if (ex * ex + ey * ey <= r2) lines.push([robot, other]);
+          }
+        }
+      }
+    }
+    this.overlayLines = lines;
+    this.overlayDrawn = true;
+  }
+
+  _loop() {
+    if (!this.running) return;
+    const stepsPerFrame = parseInt(document.getElementById('speed').value, 10);
+
+    for (let s = 0; s < stepsPerFrame; s++) {
+      this._rebuildSpatial();
+      for (const robot of this.robots) this._stepRobot(robot);
+      for (const robot of this.robots) this._checkStop(robot);
+    }
+
+    const allPositioned = this.robots.every(r => r.stopped);
+    if (allPositioned && !this.overlayDrawn) this._buildOverlay();
+    if (!allPositioned && this.overlayDrawn) {
+      this.overlayDrawn = false;
+      this.overlayLines = [];
+    }
+
+    this._render(allPositioned);
+    this._updateStatus();
+
+    if (!this.paused) {
+      this.rafId = requestAnimationFrame(() => this._loop());
+    } else {
+      this.running = false;
+    }
+  }
+
+  _render(allStopped) {
+    const ctx = this.ctx;
+    const { grid, N, cellSize } = this.maze;
+    const S = PX_PER_M;
+
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    // Draw maze
+    for (let row = 0; row < N; row++) {
+      for (let col = 0; col < N; col++) {
+        const px = col * cellSize * S;
+        const py = row * cellSize * S;
+        const pw = cellSize * S;
+        if (!grid[row][col]) {
+          ctx.fillStyle = '#2a2a2a';
+          ctx.fillRect(px, py, pw + 0.5, pw + 0.5);
+        } else {
+          ctx.fillStyle = '#f5f0e8';
+          ctx.fillRect(px, py, pw + 0.5, pw + 0.5);
+        }
+      }
+    }
+
+    // Entrance marker
+    const { entranceY } = this.maze;
+    ctx.fillStyle = '#4dff88';
+    ctx.fillRect(0, (entranceY / WORLD_SIZE) * CANVAS_SIZE - 4, 6, 8);
+
+    // Map overlay lines
+    if (this.overlayDrawn && this.overlayLines.length) {
+      ctx.strokeStyle = 'rgba(80,200,255,0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (const [a, b] of this.overlayLines) {
+        ctx.moveTo(a.x * S, a.y * S);
+        ctx.lineTo(b.x * S, b.y * S);
+      }
+      ctx.stroke();
+    }
+
+    // Robots
+    for (const robot of this.robots) {
+      const px = robot.x * S, py = robot.y * S;
+      if (robot.stopped) {
+        ctx.fillStyle = '#ff6b35';
+        ctx.beginPath();
+        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#4488ff';
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  _updateStatus() {
+    const stopped = this.robots.filter(r => r.stopped).length;
+    const moving  = this.robots.length - stopped;
+    document.getElementById('count-moving').textContent    = moving;
+    document.getElementById('count-positioned').textContent = stopped;
+  }
+}
+
+// ─── UI wiring ────────────────────────────────────────────────────────────────
+const sim = new Simulation(document.getElementById('maze'));
+
+function setComplexity(c) {
+  ['simple','medium','complex'].forEach(id => {
+    document.getElementById('btn-' + id).classList.toggle('active', id === c);
+  });
+  sim.setComplexity(c);
+}
+
+function updateSpeedLabel() {
+  document.getElementById('speed-label').textContent =
+    document.getElementById('speed').value + '×';
+}
+
+function updateRobotLabel() {
+  document.getElementById('robot-label').textContent =
+    document.getElementById('robot-count').value;
+  sim.restart();
+}
+
+// Generate maze on load (paused, waiting for Start)
+sim.newMaze();
+</script>
+</body>
+</html>
