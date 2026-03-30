@@ -1,0 +1,27 @@
+# Presentation assets (local only)
+presentation/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node (if ever used for tooling)
+node_modules/
+npm-debug.log*
+
+# Build output
+dist/
+build/
+
+# Env / secrets
+.env
+.env.*
